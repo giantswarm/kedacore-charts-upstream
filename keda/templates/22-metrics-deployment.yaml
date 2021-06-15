@@ -22,6 +22,9 @@ spec:
         {{- if .Values.podIdentity.activeDirectory.identity }}
         aadpodidbinding: {{ .Values.podIdentity.activeDirectory.identity }}
         {{- end }}
+        {{- if .Values.podLabels.metricsAdapter }}
+        {{- toYaml .Values.podLabels.metricsAdapter | nindent 8}}
+        {{- end }}
       annotations:
       {{- if .Values.prometheus.metricServer.enabled }}
         prometheus.io/scrape: "true"
@@ -70,10 +73,10 @@ spec:
           - /usr/local/bin/keda-adapter
           - --secure-port={{ .Values.service.portHttpsTarget }}
           - --logtostderr=true
-          {{ if .Values.prometheus.metricServer.enabled }}
+          {{- if .Values.prometheus.metricServer.enabled }}
           - --metrics-port={{ .Values.prometheus.metricServer.port }}
           - --metrics-path={{ .Values.prometheus.metricServer.path }}
-          {{ end }}
+          {{- end }}
           - --v={{ .Values.logging.metricServer.level }}
           ports:
             - containerPort: {{ .Values.service.portHttpsTarget }}
@@ -82,11 +85,11 @@ spec:
             - containerPort: {{ .Values.service.portHttpTarget }}
               name: http
               protocol: TCP
-            {{ if .Values.prometheus.metricServer.enabled }}
+            {{- if .Values.prometheus.metricServer.enabled }}
             - containerPort: {{ .Values.prometheus.metricServer.port }}
               name: metrics
               protocol: TCP
-            {{ end }}
+            {{- end }}
           volumeMounts:
           {{- if .Values.grpcTLSCertsSecret }}
           - name: grpc-certs
@@ -95,6 +98,9 @@ spec:
           {{- if .Values.hashiCorpVaultTLS }}
           - name: hashicorp-vault-certs
             mountPath: /hashicorp-vaultcerts
+          {{- end }}
+          {{- if .Values.volumes.metricsApiServer.extraVolumeMounts }}
+          {{- toYaml .Values.volumes.metricsApiServer.extraVolumeMounts | nindent 12 }}
           {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
@@ -109,6 +115,10 @@ spec:
         secret:
           secretName: {{ .Values.hashiCorpVaultTLS }}
       {{- end }}
+      {{- if .Values.volumes.metricsApiServer.extraVolumes }}
+      {{- toYaml .Values.volumes.metricsApiServer.extraVolumes | nindent 8 }}
+      {{- end }}
+      hostNetwork: {{ .Values.metricsServer.useHostNetwork }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

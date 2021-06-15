@@ -1,0 +1,91 @@
+name: Helm Chart CI (Core)
+on:
+  # Trigger the workflow on push or pull request,
+  # but only for the main branch
+  push:
+    branches:
+      - master
+    paths:
+      - '.github/workflows/ci-core.yml'
+      - 'keda/**'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - '.github/workflows/ci-core.yml'
+      - 'keda/**'
+
+jobs:
+  lint-helm-3-x:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v2
+
+    - name: Helm install
+      uses: Azure/setup-helm@v1
+
+    - name: Lint 'KEDA' Helm chart
+      run: helm lint keda
+
+  deploy-helm-3-x:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v2
+
+    - name: Helm install
+      uses: Azure/setup-helm@v1
+      
+    - name: Create k8s Kind Cluster
+      uses: helm/kind-action@v1.0.0
+
+    - name: Show Kubernetes version
+      run: |
+        kubectl version
+
+    - name: Show Helm version
+      run: |
+        helm version
+
+    - name: Create keda namespace
+      run: kubectl create ns keda
+
+    - name: Template Helm chart
+      run: helm template keda ./keda/ --namespace keda
+
+    - name: Install Helm chart
+      run: helm install keda ./keda/ --namespace keda
+
+    - name: Get all CRDs
+      run: kubectl get crds -o wide
+
+    - name: Verify clustertriggerauthentications.keda.sh CRD is installed
+      run: kubectl get crd/clustertriggerauthentications.keda.sh -o wide
+
+    - name: Verify triggerauthentications.keda.sh CRD is installed
+      run: kubectl get crd/triggerauthentications.keda.sh -o wide
+
+    - name: Verify scaledjobs.keda.sh CRD is installed
+      run: kubectl get crd/scaledjobs.keda.sh -o wide
+
+    - name: Verify scaledobjects.keda.sh CRD is installed
+      run: kubectl get crd/scaledobjects.keda.sh -o wide
+
+    - name: Get all ScaledObjects
+      run: kubectl get scaledobjects -o wide
+
+    - name: Get all ScaledJobs
+      run: kubectl get scaledjobs -o wide
+
+    - name: Get all TriggerAuthentication
+      run: kubectl get triggerauth -o wide
+
+    - name: Get all ClusterTriggerAuthentication
+      run: kubectl get clustertriggerauth -o wide
+
+    - name: Deploy Nginx with autoscaling
+      run: kubectl apply -f ./samples/nginx-scaledobject.yml
+
+    - name: Get our Nginx ScaledObject
+      run: kubectl get scaledobjects/nginx-autoscaling -o wide

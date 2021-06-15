@@ -4,14 +4,17 @@
 
 image:
   keda:
-    repository: docker.io/kedacore/keda
+    repository: ghcr.io/kedacore/keda
     # Allows people to override tag if they don't want to use the app version
     tag:
   metricsApiServer:
-    repository: docker.io/kedacore/keda-metrics-apiserver
+    repository: ghcr.io/kedacore/keda-metrics-apiserver
     # Allows people to override tag if they don't want to use the app version
     tag:
   pullPolicy: Always
+
+crds:
+  install: true
 
 watchNamespace: ""
 
@@ -19,8 +22,14 @@ imagePullSecrets: []
 operator:
   name: keda-operator
 
+metricsServer:  
+  useHostNetwork: false
+
 additionalLabels: ""
 podAnnotations:
+  keda: {}
+  metricsAdapter: {}
+podLabels:
   keda: {}
   metricsAdapter: {}
 
@@ -64,6 +73,9 @@ logging:
     # allowed values: 'debug', 'info', 'error', or an integer value greater than 0, specified as string
     # default value: info
     level: info
+    # allowed valuesL 'json' or 'console'
+    # default value: console
+    format: console
   metricServer:
     ## Logging level for Metrics Server
     # allowed values: '0' for info, '4' for debug, or an integer value greater than 0, specified as string
@@ -121,10 +133,26 @@ affinity: {}
 ## Optional priorityClassName for KEDA Operator and Metrics Adapter
 priorityClassName: ""
 
+## The default HTTP timeout in milliseconds that KEDA should use
+## when making requests to external services. Removing this defaults to a
+## reasonable default
+http:
+  timeout: 3000
+
 ## Extra environment variables that will be passed onto KEDA operator and metrics api service
 env:
 # - name: ENV_NAME
 #   value: 'ENV-VALUE'
+
+# Extra volumes and volume mounts for the deployment. Optional.
+volumes:
+  keda:
+    extraVolumes: []
+    extraVolumeMounts: []
+
+  metricsApiServer:
+    extraVolumes: []
+    extraVolumeMounts: []
 
 prometheus:
   metricServer:
@@ -149,3 +177,18 @@ prometheus:
       scrapeTimeout:
       namespace:
       additionalLabels: {}
+    prometheusRules:
+      # Enables PrometheusRules creation for the Prometheus Operator
+      enabled: false
+      namespace:
+      additionalLabels: {}
+      alerts: []
+        # - alert: KedaScalerErrors
+        #   annotations:
+        #     description: Keda scaledObject {{ $labels.scaledObject }} is experiencing erros with {{ $labels.scaler }} scaler
+        #     summary: Keda Scaler {{ $labels.scaler }} Errors
+        #   expr: sum by ( scaledObject , scaler) (rate(keda_metrics_adapter_scaler_errors[2m]))  > 0
+        #   for: 2m
+        #   labels:
+
+
